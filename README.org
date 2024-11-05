@@ -17,7 +17,7 @@ You can run it with node using (it only runs when using pipes, and throws an err
 
 #+BEGIN_SRC bash
   cd release
-  cat こんにちは | node jagger_cli.js -m kwdlc/patterns
+  echo こんにちは | node jagger_cli.js -m kwdlc/patterns
 #+END_SRC
 
 Unfortunately, it is significantly slower than the C++ verison (20s vs 12min when running with the dataset provided by `benchmark/prepare_dataset.py`).
