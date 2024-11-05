@@ -1,0 +1,33 @@
+* Demo Site
+
+[[https://coruscation.net/jagger-wasm-demo/][Jagger Wasm Demo]]
+
+* Compile Project
+
+#+BEGIN_SRC bash
+  cmake -S . -B release/ -D CMAKE_BUILD_TYPE=Release
+  cmake --build release/ --clean-first
+#+END_SRC
+
+It will produce a standalone cli application (jagger_cli.js) that can run directly with `node`, and a library (jagger-binding.js) that can be loaded in a web browser.
+
+** jagger_cli.js
+
+You can run it with node using (it only runs when using pipes, and throws an error when running interactively for some reason)
+
+#+BEGIN_SRC bash
+  cd release
+  cat こんにちは | node jagger_cli.js -m kwdlc/patterns
+#+END_SRC
+
+Unfortunately, it is significantly slower than the C++ verison (20s vs 12min when running with the dataset provided by `benchmark/prepare_dataset.py`).
+However, by some profiling it seems that most time is spending on IO operations. Upon further inspection, that fact that emscripten flushes the buffer every time a linebreak is encountered, seems to be a major factor (glibc only does this when running interactively).
+
+
+** jagger-binding.js
+
+It is working in progress, no document is available now. You can check the [[https://coruscation.net/jagger-wasm-demo/][demo site]], and its [[https://github.com/imakira/jagger-wasm-demo/tree/dev][source code]].
+
+* Credit
+
+This is based on [[https://github.com/lighttransport/jagger-python][jagger-python]]. The original project is [[https://www.tkl.iis.u-tokyo.ac.jp/~ynaga/jagger/index.en.html][jagger.]]
