@@ -1,0 +1,15 @@
+.cmake
+CMakeFiles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+jagger_cli
+.cache
+debug
+release
+build
+kwdlc.zip
+kwdlc
+compile_commands.json
+note.org
+benchmark/output-wiki.txt

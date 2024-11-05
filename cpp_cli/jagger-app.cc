@@ -2,6 +2,7 @@
 //  $Id: jagger.cc 2031 2023-02-17 21:47:05Z ynaga $
 // Copyright (c) 2022 Naoki Yoshinaga <ynaga@iis.u-tokyo.ac.jp>
 // Modification by Copyright 2023 - Present, Light Transport Entertainment Inc.
+#include <cstdint>
 #include "jagger.h"
 
 static const size_t MAX_KEY_BITS     = 14;
@@ -227,7 +228,7 @@ namespace jagger {
 #ifndef USE_COMPACT_DICT
           p = const_cast <char*> (f);
 #endif
-          const size_t fi = fbag_.to_i (p, p_end - p) + 1;
+          const uint64_t fi = fbag_.to_i (p, p_end - p) + 1;
           if (fi_ + CP_MAX == counter.size ()) // new part-of-speech
             counter.push_back (std::make_pair (0, fi_ + CP_MAX));
           std::pair <std::map <uint64_t, int>::iterator, bool> itb
@@ -242,7 +243,7 @@ namespace jagger {
         for (unsigned int i = 1; i < counter.size () && counter[i].first; ++i)
           c2i_[counter[i].second] = static_cast <uint16_t> (i);
         // save feature strings
-        std::vector <size_t> offsets;
+        std::vector <uint64_t> offsets;
 #ifdef USE_COMPACT_DICT
         fbag.serialize  (fs_, offsets); // required only for compact dict
 #endif
@@ -368,7 +369,6 @@ int main (int argc, char** argv) {
   {
     if ((argc < 2) || (std::string(argv[1]) == "-h")) {
           my_errx (1, "Pattern-based Jappanese Morphological Analyzer\nUsage: %s -m dir [-wf] < input\n\nOptions:\n -m dir\tpattern directory (default: " JAGGER_DEFAULT_MODEL ")\n -w\tperform only segmentation\n -f\tfull buffering (fast but not interactive)", argv[0]);
-
     }
 
     for (size_t i = 1; i < argc; i++) {

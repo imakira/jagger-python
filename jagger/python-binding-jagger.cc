@@ -1,11 +1,10 @@
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
+#include <emscripten/bind.h>
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
+#include <cstdint>
 #include <fstream>
-#include <mutex>
+#include <iostream>
 #include <sstream>
 #include <thread>
 
@@ -18,7 +17,17 @@
 #define NUM_POS_FIELD 4
 #endif
 
-namespace py = pybind11;
+template <typename T>
+void print(T t) {
+  std::cout << t << std::endl;
+}
+
+template <typename T, typename... Args>
+void print(T t, Args... args)  // recursive variadic function
+{
+  std::cout << t << "";
+  print(args...);
+}
 
 namespace {
 
@@ -818,7 +827,7 @@ class tagger {
     std::vector<uint8_t> data;
     std::string err;
     if (!ReadWholeFile(&data, &err, fn, 1024ull * 1024ull * 1024ull, nullptr)) {
-      py::print("Failed to read file: ", err);
+      print("Failed to read file: ", err);
       return nullptr;
     }
     buffers[idx] = data;
@@ -859,7 +868,7 @@ class tagger {
     // struct stat st;
     // if (::stat (da_fn.c_str (), &st) != 0) { // compile
     if (!FileExists(da_fn)) {
-      py::print("building DA trie from patterns..");
+      print("building DA trie from patterns..");
       std::vector<uint16_t> c2i_;  // mapping from utf8, BOS, unk to char ID
       std::vector<uint64_t> p2f_;  // mapping from pattern ID to feature str
       std::vector<char> fs_;       // feature strings
@@ -904,7 +913,7 @@ class tagger {
 #ifndef USE_COMPACT_DICT
         p = const_cast<char *>(f);
 #endif
-        const size_t fi = fbag_.to_i(p, p_end - p) + 1;
+        const uint64_t fi = fbag_.to_i(p, p_end - p) + 1;
         if (fi_ + CP_MAX == counter.size())  // new part-of-speech
           counter.push_back(std::make_pair(0, fi_ + CP_MAX));
         std::pair<std::map<uint64_t, int>::iterator, bool> itb =
@@ -923,7 +932,7 @@ class tagger {
       for (unsigned int i = 1; i < counter.size() && counter[i].first; ++i)
         c2i_[counter[i].second] = static_cast<uint16_t>(i);
       // save feature strings
-      std::vector<size_t> offsets;
+      std::vector<uint64_t> offsets;
 #ifdef USE_COMPACT_DICT
       fbag.serialize(fs_, offsets);  // required only for compact dict
 #endif
@@ -960,36 +969,36 @@ class tagger {
       c2i_.resize(CP_MAX + 2);  // chop most of part-of-speech mapping
       write_array(c2i_, c2i_fn);
       da.save(da_fn.c_str());
-      py::print("Model conversion done.\n");
+      print("Model conversion done.\n");
     }
     size_t buf_size{0};
     const void *da_buf = read_array(da_fn, 0, buf_size);
     if (!da_buf) {
-      py::print("da_fn not found:", da_fn);
+      print("da_fn not found:", da_fn);
       return false;
     }
-    //da.set_array(da_buf, buf_size / sizeof();
+    // da.set_array(da_buf, buf_size / sizeof();
     da.set_array(da_buf, buf_size);
     c2i = static_cast<const uint16_t *>(read_array(c2i_fn, 1, buf_size));
     if (!c2i) {
-      py::print("c2i_fn not found:", c2i_fn);
+      print("c2i_fn not found:", c2i_fn);
       return false;
     }
     p2f = static_cast<const uint64_t *>(read_array(p2f_fn, 2, buf_size));
     if (!p2f) {
-      py::print("p2f_fn not found:", p2f_fn);
+      print("p2f_fn not found:", p2f_fn);
       return false;
     }
     fs = static_cast<const char *>(read_array(fs_fn, 3, buf_size));
     if (!fs) {
-      py::print("fs_fn not found:", fs_fn);
+      print("fs_fn not found:", fs_fn);
       return false;
     }
-    // py::print("All dict read OK");
+    // print("All dict read OK");
 
     return true;
   }
-#if 0 // not used
+#if 0  // not used
   template <const int BUF_SIZE_, const bool POS_TAGGING>
   void run() const {
     if (BUF_SIZE_ == 0) std::fprintf(stderr, "(input: stdin)\n");
@@ -1209,23 +1218,22 @@ class PyJagger {
     if (_tagger->read_model(model_path)) {
       _model_loaded = true;
       _model_path = model_path;
-      //py::print("Model loaded:", model_path);
+      // print("Model loaded:", model_path);
     } else {
       _model_loaded = false;
-      py::print("Model load failed:", model_path);
+      print("Model load failed:", model_path);
     }
 
     return _model_loaded;
   }
 
-  void set_threads(uint32_t nthreads) {
-    _nthreads = nthreads;
-  }
+  void set_threads(uint32_t nthreads) { _nthreads = nthreads; }
 
   ///
   /// Tokenize single-line string(char pointer version).
   ///
-  std::vector<jagger::PyToken> tokenize_line(const char *s, const size_t len) const;
+  std::vector<jagger::PyToken> tokenize_line(const char *s,
+                                             const size_t len) const;
 
   ///
   /// Tokenize single-line string(std::string version).
@@ -1240,7 +1248,8 @@ class PyJagger {
   /// @param[in] threads Optional. Control the number of C++11 threads(CPU
   /// cores) to use.
   ///
-  std::vector<std::vector<jagger::PyToken>> tokenize_batch(const std::string &src) const;
+  std::vector<std::vector<jagger::PyToken>> tokenize_batch(
+      const std::string &src) const;
 
  private:
   uint32_t _nthreads{0};  // 0 = use all cores
@@ -1252,12 +1261,12 @@ class PyJagger {
 std::vector<jagger::PyToken> PyJagger::tokenize(const std::string &src) const {
   std::vector<jagger::PyToken> dst;
   if (!_model_loaded) {
-    py::print("Model is not loaded.");
+    print("Model is not loaded.");
     return dst;
   }
 
   if (!_tagger) {
-    py::print("PyJagger: ??? tagger instance is nullptr.");
+    print("PyJagger: ??? tagger instance is nullptr.");
     return dst;
   }
 
@@ -1266,13 +1275,12 @@ std::vector<jagger::PyToken> PyJagger::tokenize(const std::string &src) const {
   return dst;
 }
 
-std::vector<std::vector<jagger::PyToken>> PyJagger::tokenize_batch(const std::string &src) const {
-
-
+std::vector<std::vector<jagger::PyToken>> PyJagger::tokenize_batch(
+    const std::string &src) const {
   std::vector<std::vector<jagger::PyToken>> dst;
 
   if (!_tagger) {
-    py::print("PyJagger: ??? tagger instance is nullptr.");
+    print("PyJagger: ??? tagger instance is nullptr.");
     return dst;
   }
 
@@ -1328,27 +1336,22 @@ std::vector<std::vector<jagger::PyToken>> PyJagger::tokenize_batch(const std::st
 
 }  // namespace pyjagger
 
-PYBIND11_MODULE(jagger_ext, m) {
-  m.doc() = "Python binding for Jagger.";
-
-  // Add Ext prefix to avoid name conflict of 'Jagger' class in Python
-  // world(defined in `jagger/__init__.py`)
-  py::class_<pyjagger::PyJagger>(m, "JaggerExt")
-      .def(py::init<>())
-      .def(py::init<std::string>())
-      .def("load_model", &pyjagger::PyJagger::load_model)
-      .def("tokenize", &pyjagger::PyJagger::tokenize)
-      .def("tokenize_batch", &pyjagger::PyJagger::tokenize_batch)
-      .def("set_threads", &pyjagger::PyJagger::set_threads);
-
-  py::class_<jagger::PyToken>(m, "Token")
-      .def(py::init<>())
-      .def("surface", &jagger::PyToken::surface)
-      .def("feature", &jagger::PyToken::feature)
-      .def("n_tags", &jagger::PyToken::n_tags)
-      .def("tag", &jagger::PyToken::tag)
-      .def("set_quote_char", &jagger::PyToken::set_quote_char)
-      .def("__repr__", &jagger::PyToken::str)
-      ;
-
+using namespace emscripten;
+EMSCRIPTEN_BINDINGS(my_module) {
+  class_<pyjagger::PyJagger>("Jagger")
+      .constructor()
+      .function("load_model", &pyjagger::PyJagger::load_model)
+      .function("tokenize", &pyjagger::PyJagger::tokenize)
+      .function("tokenize_batch", &pyjagger::PyJagger::tokenize_batch)
+      .function("set_threads", &pyjagger::PyJagger::set_threads);
+  class_<jagger::PyToken>("Token")
+      .constructor()
+      .function("surface", &jagger::PyToken::surface)
+      .function("feature", &jagger::PyToken::feature)
+      .function("n_tags", &jagger::PyToken::n_tags)
+      .function("tag", &jagger::PyToken::tag)
+      .function("set_quote_char", &jagger::PyToken::set_quote_char)
+      .function("__repr__", &jagger::PyToken::str);
+  register_vector<std::string>("VectorString");
+  register_vector<jagger::PyToken>("VectorToken");
 }

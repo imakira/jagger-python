@@ -4,6 +4,7 @@
 #ifndef JAGGER_H
 #define JAGGER_H
 
+#include <cstdint>
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
@@ -133,7 +134,7 @@ public:
   int find (const char* f, const size_t len) const
   { return _str2id.exactMatchSearch <int> (f, len); }
   size_t size () const { return _id2str.size (); }
-  void serialize (std::vector <char>& ret, std::vector <size_t>& offsets) {
+  void serialize (std::vector <char>& ret, std::vector <uint64_t>& offsets) {
     for (std::vector <std::string>::const_iterator it = _id2str.begin ();
          it != _id2str.end (); ++it) {
       const uint16_t len = static_cast <uint16_t> (it->size ());
